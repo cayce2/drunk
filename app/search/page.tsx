@@ -1,6 +1,5 @@
 //app/search/page.tsx
 
-
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -45,8 +44,8 @@ export default function SearchPage() {
       ) : products.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {products.map((product) => (
-            <div key={product._id} className="border rounded-lg overflow-hidden shadow-md">
-              <Link href={`/products/${product._id}`}>
+            <div key={product._id.toString()} className="border rounded-lg overflow-hidden shadow-md">
+              <Link href={`/products/${product._id.toString()}`}>
                 <div className="relative h-48">
                   <Image
                     src={product.imageUrl || '/placeholder.svg'}
