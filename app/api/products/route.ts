@@ -15,20 +15,26 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const page = parseInt(searchParams.get('page') || '1', 10)
   const limit = parseInt(searchParams.get('limit') || '10', 10)
+  const category = searchParams.get('category')
 
   try {
     const client = await clientPromise
     const db = client.db('liquor_store')
 
+    let query = {}
+    if (category && category !== 'All') {
+      query = { category: category }
+    }
+
     const skip = (page - 1) * limit
 
     const products = await db.collection<Product>('products')
-      .find({})
+      .find(query)
       .skip(skip)
       .limit(limit)
       .toArray()
 
-    const total = await db.collection('products').countDocuments()
+    const total = await db.collection('products').countDocuments(query)
 
     return NextResponse.json({
       products,
