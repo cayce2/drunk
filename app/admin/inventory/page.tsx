@@ -1,29 +1,91 @@
-//app/admin/inventory/page.tsx
-
-
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from "next/navigation"
+//import { useRouter } from "next/navigation"
 import Image from 'next/image'
-import { RefreshCw, Edit, Trash } from 'lucide-react'
+import { RefreshCw, Edit, Trash, Plus, Search } from 'lucide-react'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface Product {
   _id: string
   name: string
+  description?: string
   price: number
   quantity: number
+  category?: string
   inStock: boolean
   imageUrl: string
 }
 
+interface AddProductFormData {
+  name: string
+  description: string
+  price: string
+  category: string
+  imageUrl: string
+  quantity: string
+}
+
+const StockBadge = ({ inStock }: { inStock: boolean }) => (
+  <Badge 
+    variant={inStock ? "secondary" : "destructive"}
+    className={inStock ? "bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-100" : ""}
+  >
+    {inStock ? 'In Stock' : 'Out of Stock'}
+  </Badge>
+)
+
 export default function AdminInventory() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const router = useRouter()
+//  const router = useRouter()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [sortBy, setSortBy] = useState<'name' | 'price' | 'quantity'>('name')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [addProductFormData, setAddProductFormData] = useState<AddProductFormData>({
+    name: '',
+    description: '',
+    price: '',
+    category: '',
+    imageUrl: '',
+    quantity: '0'
+  })
+  const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   useEffect(() => {
     fetchProducts()
@@ -47,6 +109,57 @@ export default function AdminInventory() {
     }
   }
 
+  const handleAddProductInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target
+    setAddProductFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleAddProductSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    try {
+      const response = await fetch('/api/admin/inventory', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...addProductFormData,
+          price: parseFloat(addProductFormData.price),
+          quantity: parseInt(addProductFormData.quantity),
+          inStock: parseInt(addProductFormData.quantity) > 0
+        }),
+      })
+
+      if (response.ok) {
+        setAlert({ type: 'success', message: 'Product added successfully!' })
+        setAddProductFormData({
+          name: '',
+          description: '',
+          price: '',
+          category: '',
+          imageUrl: '',
+          quantity: '0'
+        })
+        fetchProducts()
+        setTimeout(() => {
+          setIsAddModalOpen(false)
+          setAlert(null)
+        }, 2000)
+      } else {
+        throw new Error('Failed to create product')
+      }
+    } catch (error) {
+      console.error('Error creating product:', error)
+      setAlert({ 
+        type: 'error', 
+        message: 'There was an error creating the product. Please try again.' 
+      })
+    }
+  }
+
   const updateProductStock = async (productId: string, inStock: boolean, quantity: number) => {
     try {
       const response = await fetch(`/api/admin/inventory/${productId}`, {
@@ -65,10 +178,6 @@ export default function AdminInventory() {
     } catch (error) {
       console.error('Error updating product stock:', error)
     }
-  }
-
-  const handleEditProduct = (product: Product) => {
-    setEditingProduct(product)
   }
 
   const handleSaveEdit = async () => {
@@ -112,128 +221,404 @@ export default function AdminInventory() {
     }
   }
 
+  const filteredAndSortedProducts = products
+    .filter(product => 
+      product.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const compareValue = (a: any, b: any) => {
+        if (sortOrder === 'asc') {
+          return a[sortBy] > b[sortBy] ? 1 : -1
+        }
+        return a[sortBy] < b[sortBy] ? 1 : -1
+      }
+      return compareValue(a, b)
+    })
+
   if (loading) {
-    return <div className="p-4 text-center text-sm text-gray-600 dark:text-gray-300">Loading inventory...</div>
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white" />
+      </div>
+    )
   }
 
   return (
-    <div className="p-2">
-      <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Inventory Management</h1>
-        <button
-          onClick={fetchProducts}
-          disabled={refreshing}
-          className="flex items-center bg-blue-500 text-white px-3 py-1 text-sm rounded hover:bg-blue-600 transition-colors disabled:bg-blue-300 dark:disabled:bg-blue-700"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Refreshing...' : 'Refresh'}
-        </button>
-      </div>
-      <div className="space-y-4">
-        {products.map((product) => (
-          <div key={product._id} className="bg-white dark:bg-gray-800 shadow rounded overflow-hidden">
-            <div className="p-4 flex flex-wrap justify-between items-center">
-              <div className="w-full sm:w-auto mb-2 sm:mb-0 flex items-center">
-                <Image
-                  src={product.imageUrl || '/placeholder.svg'}
-                  alt={product.name}
-                  width={50}
-                  height={50}
-                  className="rounded object-cover mr-4"
-                />
-                <div>
-                  <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200">{product.name}</h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Ksh {product.price.toFixed(2)}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                  product.inStock ? 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-200'
-                }`}>
-                  {product.inStock ? 'In Stock' : 'Out of Stock'}
-                </div>
-                <input
-                  type="number"
-                  value={product.quantity}
-                  onChange={(e) => updateProductStock(product._id, product.inStock, parseInt(e.target.value))}
-                  className="w-16 px-2 py-1 text-sm border rounded"
-                  min="0"
-                />
-                <button
-                  onClick={() => updateProductStock(product._id, !product.inStock, product.quantity)}
-                  className={`px-2 py-1 text-xs rounded ${
-                    product.inStock ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
-                  }`}
-                >
-                  {product.inStock ? 'Mark Out of Stock' : 'Mark In Stock'}
-                </button>
-                <button
-                  onClick={() => handleEditProduct(product)}
-                  className="p-1 text-blue-500 hover:text-blue-600"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => handleDeleteProduct(product._id)}
-                  className="p-1 text-red-500 hover:text-red-600"
-                >
-                  <Trash className="w-4 h-4" />
-                </button>
-              </div>
+    <div className="container mx-auto p-6 space-y-6">
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>Inventory Management</CardTitle>
+            <div className="flex space-x-2">
+              <Button
+                onClick={fetchProducts}
+                disabled={refreshing}
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? 'Refreshing...' : 'Refresh'}
+              </Button>
+              <Button size="sm" onClick={() => setIsAddModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Product
+              </Button>
             </div>
           </div>
-        ))}
-      </div>
-      {editingProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg w-96">
-            <h2 className="text-lg font-semibold mb-4">Edit Product</h2>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4 mb-6">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search products..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
+            <Select
+              value={sortBy}
+              onValueChange={(value: 'name' | 'price' | 'quantity') => setSortBy(value)}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="price">Price</SelectItem>
+                <SelectItem value="quantity">Quantity</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            >
+              {sortOrder === 'asc' ? '↑' : '↓'}
+            </Button>
+          </div>
+
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Stock Status</TableHead>
+                  <TableHead>Quantity</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAndSortedProducts.map((product) => (
+                  <TableRow key={product._id}>
+                    <TableCell>
+                      <div className="flex items-center space-x-3">
+                        <Image
+                          src={product.imageUrl || '/placeholder.svg'}
+                          alt={product.name}
+                          width={40}
+                          height={40}
+                          className="rounded-md object-cover"
+                        />
+                        <span className="font-medium">{product.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>Ksh {product.price.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <StockBadge inStock={product.inStock} />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        value={product.quantity}
+                        onChange={(e) => updateProductStock(product._id, product.inStock, parseInt(e.target.value))}
+                        className="w-20"
+                        min="0"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => updateProductStock(product._id, !product.inStock, product.quantity)}
+                        >
+                          {product.inStock ? 'Mark Out' : 'Mark In'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setEditingProduct(product)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => handleDeleteProduct(product._id)}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Add Product Modal */}
+      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Add New Product</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleAddProductSubmit} className="space-y-4">
+            {alert && (
+              <Alert variant={alert.type === 'success' ? 'default' : 'destructive'}>
+                <AlertDescription>{alert.message}</AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                <input
-                  type="text"
-                  value={editingProduct.name}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                <label htmlFor="name" className="text-sm font-medium">
+                  Product Name
+                </label>
+                <Input
+                  id="name"
+                  name="name"
+                  value={addProductFormData.name}
+                  onChange={handleAddProductInputChange}
+                  placeholder="Enter product name"
+                  required
                 />
               </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Price</label>
-                <input
-                  type="number"
-                  value={editingProduct.price}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                <label htmlFor="description" className="text-sm font-medium">
+                  Description
+                </label>
+                <Textarea
+                  id="description"
+                  name="description"
+                  value={addProductFormData.description}
+                  onChange={handleAddProductInputChange}
+                  placeholder="Enter product description"
+                  required
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="price" className="text-sm font-medium">
+                    Price
+                  </label>
+                  <Input
+                    type="number"
+                    id="price"
+                    name="price"
+                    value={addProductFormData.price}
+                    onChange={handleAddProductInputChange}
+                    placeholder="Enter price"
+                    step="0.01"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="quantity" className="text-sm font-medium">
+                    Quantity
+                  </label>
+                  <Input
+                    type="number"
+                    id="quantity"
+                    name="quantity"
+                    value={addProductFormData.quantity}
+                    onChange={handleAddProductInputChange}
+                    placeholder="Enter quantity"
+                    min="0"
+                    required
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Quantity</label>
-                <input
-                  type="number"
-                  value={editingProduct.quantity}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, quantity: parseInt(e.target.value) })}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                <label htmlFor="category" className="text-sm font-medium">
+                  Category
+                </label>
+                <Input
+                  id="category"
+                  name="category"
+                  value={addProductFormData.category}
+                  onChange={handleAddProductInputChange}
+                  placeholder="Enter category"
+                  required
                 />
               </div>
-              <div className="flex justify-end space-x-2">
-                <button
-                  onClick={() => setEditingProduct(null)}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveEdit}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+
+              <div>
+                <label htmlFor="imageUrl" className="text-sm font-medium">
+                  Image URL
+                </label>
+                <Input
+                  type="url"
+                  id="imageUrl"
+                  name="imageUrl"
+                  value={addProductFormData.imageUrl} onChange={handleAddProductInputChange} 
+                  placeholder="Enter image URL" required /> 
+                  </div> 
+                  </div> 
+                    <DialogFooter> 
+                      <Button type="submit">Add Product</Button> 
+                      <Button variant="outline" onClick={() => setIsAddModalOpen(false)}> Cancel </Button> 
+                      </DialogFooter> </form> </DialogContent> </Dialog>
+                    {/* Edit Product Modal */}
+                    {editingProduct && (
+                      <Dialog open={!!editingProduct} onOpenChange={() => setEditingProduct(null)}>
+                        <DialogContent className="sm:max-w-[600px]">
+                          <DialogHeader>
+                            <DialogTitle>Edit Product</DialogTitle>
+                          </DialogHeader>
+                          <form onSubmit={handleSaveEdit} className="space-y-4">
+                            <div className="space-y-4">
+                              <div>
+                                <label htmlFor="name" className="text-sm font-medium">
+                                  Product Name
+                                </label>
+                                <Input
+                                  id="name"
+                                  name="name"
+                                  value={editingProduct.name}
+                                  onChange={(e) =>
+                                    setEditingProduct((prev) =>
+                                      prev ? { ...prev, name: e.target.value } : prev
+                                    )
+                                  }
+                                  placeholder="Enter product name"
+                                  required
+                                />
+                              </div>
+                  
+                              <div>
+                                <label htmlFor="description" className="text-sm font-medium">
+                                  Description
+                                </label>
+                                <Textarea
+                                  id="description"
+                                  name="description"
+                                  value={editingProduct.description}
+                                  onChange={(e) =>
+                                    setEditingProduct((prev) =>
+                                      prev ? { ...prev, description: e.target.value } : prev
+                                    )
+                                  }
+                                  placeholder="Enter product description"
+                                  required
+                                />
+                              </div>
+                  
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label htmlFor="price" className="text-sm font-medium">
+                                    Price
+                                  </label>
+                                  <Input
+                                    type="number"
+                                    id="price"
+                                    name="price"
+                                    value={editingProduct.price}
+                                    onChange={(e) =>
+                                      setEditingProduct((prev) =>
+                                        prev ? { ...prev, price: parseFloat(e.target.value) } : prev
+                                      )
+                                    }
+                                    placeholder="Enter price"
+                                    step="0.01"
+                                    required
+                                  />
+                                </div>
+                  
+                                <div>
+                                  <label htmlFor="quantity" className="text-sm font-medium">
+                                    Quantity
+                                  </label>
+                                  <Input
+                                    type="number"
+                                    id="quantity"
+                                    name="quantity"
+                                    value={editingProduct.quantity}
+                                    onChange={(e) =>
+                                      setEditingProduct((prev) =>
+                                        prev ? { ...prev, quantity: parseInt(e.target.value) } : prev
+                                      )
+                                    }
+                                    placeholder="Enter quantity"
+                                    min="0"
+                                    required
+                                  />
+                                </div>
+                              </div>
+                  
+                              <div>
+                                <label htmlFor="category" className="text-sm font-medium">
+                                  Category
+                                </label>
+                                <Input
+                                  id="category"
+                                  name="category"
+                                  value={editingProduct.category || ''}
+                                  onChange={(e) =>
+                                    setEditingProduct((prev) =>
+                                      prev ? { ...prev, category: e.target.value } : prev
+                                    )
+                                  }
+                                  placeholder="Enter category"
+                                  required
+                                />
+                              </div>
+                  
+                              <div>
+                                <label htmlFor="imageUrl" className="text-sm font-medium">
+                                  Image URL
+                                </label>
+                                <Input
+                                  type="url"
+                                  id="imageUrl"
+                                  name="imageUrl"
+                                  value={editingProduct.imageUrl}
+                                  onChange={(e) =>
+                                    setEditingProduct((prev) =>
+                                      prev ? { ...prev, imageUrl: e.target.value } : prev
+                                    )
+                                  }
+                                  placeholder="Enter image URL"
+                                  required
+                                />
+                              </div>
+                            </div>
+                            <DialogFooter>
+                              <Button type="submit">Save Changes</Button>
+                              <Button variant="outline" onClick={() => setEditingProduct(null)}>
+                                Cancel
+                              </Button>
+                            </DialogFooter>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                    )}
+                  </div>
+                  ) }
+                  
+                  
+                  
+                  
+                  
+                  
+                  

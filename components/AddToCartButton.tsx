@@ -6,7 +6,7 @@ import { ObjectId } from 'mongodb'
 
 // Ensure this matches the Product type in your MongoDB schema
 interface Product {
-    _id: ObjectId | string
+  _id: ObjectId | string
   name: string
   price: number
   imageUrl: string
@@ -25,12 +25,14 @@ export default function AddToCartButton({ product, disabled = false }: AddToCart
   const { addToCart } = useCart()
 
   const handleAddToCart = () => {
+    if (quantity > product.quantity) return; // Prevent adding if stock is not enough
+
     setIsAdding(true)
     addToCart({
       _id: product._id.toString(), // Convert ObjectId to string
       name: product.name,
       price: product.price,
-      quantity: quantity,
+      quantity,
       imageUrl: product.imageUrl,
     })
     setTimeout(() => {
@@ -39,32 +41,34 @@ export default function AddToCartButton({ product, disabled = false }: AddToCart
     }, 500)
   }
 
+  const decreaseQuantity = () => setQuantity(prev => Math.max(1, prev - 1))
+  const increaseQuantity = () => setQuantity(prev => Math.min(product.quantity, prev + 1))
+
   return (
-    <div className="flex flex-col items-start w-full">
-      <div className="flex items-center mb-4 w-full">
+    <div className="flex flex-col items-center space-y-2">
+      <div className="flex items-center space-x-2">
         <button
-          className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-3 py-1 rounded-l transition-colors hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
-          onClick={() => setQuantity(Math.max(1, quantity - 1))}
+          onClick={decreaseQuantity}
           disabled={disabled || isAdding}
           aria-label="Decrease quantity"
+          className="px-3 py-1 text-lg border border-gray-300 rounded-md"
         >
           -
         </button>
-        <span className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-4 py-1 select-none flex-grow text-center">
-          {quantity}
-        </span>
+        <span className="text-lg font-semibold">{quantity}</span>
         <button
-          className="bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-3 py-1 rounded-r transition-colors hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
-          onClick={() => setQuantity(Math.min(product.quantity, quantity + 1))}
+          onClick={increaseQuantity}
           disabled={disabled || isAdding || quantity >= product.quantity}
           aria-label="Increase quantity"
+          className="px-3 py-1 text-lg border border-gray-300 rounded-md"
         >
           +
         </button>
       </div>
+      
       <button
         onClick={handleAddToCart}
-        disabled={disabled || isAdding || quantity > product.quantity}
+        disabled={disabled || quantity > product.quantity}
         className={`w-full px-4 py-2 text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 ${
           disabled || quantity > product.quantity
             ? 'bg-gray-400 cursor-not-allowed'
@@ -73,8 +77,18 @@ export default function AddToCartButton({ product, disabled = false }: AddToCart
             : 'bg-blue-600 hover:bg-blue-700'
         }`}
       >
-        {disabled ? 'Out of Stock' : isAdding ? 'Added!' : quantity > product.quantity ? 'Not Enough Stock' : 'Add to Cart'}
+        {disabled 
+          ? 'Out of Stock' 
+          : isAdding 
+          ? 'Added!' 
+          : quantity > product.quantity 
+          ? 'Not Enough Stock' 
+          : 'Add to Cart'}
       </button>
+      
+      {product.quantity > 0 && (
+        <span className="text-sm text-gray-500">Available stock: {product.quantity}</span>
+      )}
     </div>
   )
 }
