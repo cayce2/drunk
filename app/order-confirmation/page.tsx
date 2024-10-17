@@ -1,7 +1,4 @@
 /* eslint-disable @next/next/no-img-element */
-//app/order-confirmation/page.tsx
-
-
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -39,7 +36,12 @@ function OrderConfirmationPageContent() {
   useEffect(() => {
     if (orderId) {
       fetch(`/api/orders?orderId=${orderId}`)
-        .then((res) => res.json())
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error('Failed to fetch order')
+          }
+          return res.json()
+        })
         .then((data) => {
           setOrder(data)
           setLoading(false)
@@ -68,6 +70,23 @@ function OrderConfirmationPageContent() {
     return <div className="text-center text-gray-700 dark:text-gray-300">Order not found.</div>
   }
 
+  // Format currency helper
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-KE', {
+      style: 'currency',
+      currency: 'KES',
+      minimumFractionDigits: 2
+    }).format(amount)
+  }
+
+  // Format date helper
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    })
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 no-print text-gray-800 dark:text-white">Order Confirmation</h1>
@@ -81,7 +100,7 @@ function OrderConfirmationPageContent() {
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6">
           <div className="text-center mb-4">
             <img
-              src="./images/logo.png"
+              src="/images/logo.png"
               alt="Business Logo"
               className="mx-auto h-16"
             />
@@ -89,14 +108,23 @@ function OrderConfirmationPageContent() {
 
           <h1 className="text-center text-2xl font-bold mb-4 text-gray-800 dark:text-white">Drunk by Caycee</h1>
           <p className="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">Order Receipt</p>
+          
           <div className="flex justify-between mb-4">
             <div>
-              <p className="text-gray-700 dark:text-gray-300"><strong>Order ID:</strong> {order._id}</p>
-              <p className="text-gray-700 dark:text-gray-300"><strong>Date:</strong> {new Date(order.createdAt).toLocaleString()}</p>
+              <p className="text-gray-700 dark:text-gray-300">
+                <strong>Order ID:</strong> {order._id}
+              </p>
+              <p className="text-gray-700 dark:text-gray-300">
+                <strong>Date:</strong> {formatDate(order.createdAt)}
+              </p>
             </div>
             <div className="text-right">
-              <p className="text-gray-700 dark:text-gray-300"><strong>Status:</strong> {order.status}</p>
-              <p className="text-gray-700 dark:text-gray-300"><strong>Total:</strong> Ksh {order.total.toFixed(2)}</p>
+              <p className="text-gray-700 dark:text-gray-300">
+                <strong>Status:</strong> {order.status}
+              </p>
+              <p className="text-gray-700 dark:text-gray-300">
+                <strong>Total:</strong> {formatCurrency(order.total)}
+              </p>
             </div>
           </div>
 
@@ -104,44 +132,62 @@ function OrderConfirmationPageContent() {
 
           <div className="mb-4">
             <h2 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Items</h2>
-            <ul>
-              {order.items.map((item) => (
-                <li key={item._id} className="flex justify-between items-center mb-2 text-gray-700 dark:text-gray-300">
-                  <span>{item.name} x {item.quantity}</span>
-                  <span>Ksh {(item.price * item.quantity).toFixed(2)}</span>
-                </li>
-              ))}
-            </ul>
+            {order.items && order.items.length > 0 ? (
+              <ul>
+                {order.items.map((item) => (
+                  <li key={item._id} className="flex justify-between items-center mb-2 text-gray-700 dark:text-gray-300">
+                    <span>{item.name} x {item.quantity}</span>
+                    <span>{formatCurrency(item.price * item.quantity)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-700 dark:text-gray-300">No items found in this order.</p>
+            )}
           </div>
 
           <hr className="my-4 border-gray-200 dark:border-gray-700" />
 
           <div className="mb-4">
             <h2 className="text-lg font-semibold mb-2 text-gray-800 dark:text-white">Shipping Address</h2>
-            <p className="text-gray-700 dark:text-gray-300">{order.shippingAddress.name}</p>
-            <p className="text-gray-700 dark:text-gray-300">{order.shippingAddress.address}</p>
-            <p className="text-gray-700 dark:text-gray-300">{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}</p>
+            <div className="text-gray-700 dark:text-gray-300">
+              {order.shippingAddress && (
+                <>
+                  <p>{order.shippingAddress.name}</p>
+                  <p>{order.shippingAddress.address}</p>
+                  <p>
+                    {order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zip}
+                  </p>
+                </>
+              )}
+            </div>
           </div>
 
           <hr className="my-4 border-gray-200 dark:border-gray-700" />
 
           <div className="text-center text-sm text-gray-500 dark:text-gray-400">
             <p>Thank you for shopping with us!</p>
-            <p>Contact us at info@yourstore.com</p>
+            <p>Contact us at support@drunkbycaycee.com</p>
           </div>
         </div>
       </div>
 
-      <button
-        onClick={handlePrint}
-        className="bg-blue-500 dark:bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-600 dark:hover:bg-blue-700 mt-4 no-print transition-colors"
-      >
-        Print Receipt
-      </button>
+      <div className="flex flex-col sm:flex-row gap-4 justify-center items-center no-print">
+        <button
+          onClick={handlePrint}
+          className="bg-blue-500 dark:bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-600 
+                   dark:hover:bg-blue-700 transition-colors w-full sm:w-auto"
+        >
+          Print Receipt
+        </button>
 
-      <Link href="/products" className="text-blue-500 dark:text-blue-400 hover:underline mt-4 block no-print">
-        Return to Home
-      </Link>
+        <Link 
+          href="/products" 
+          className="text-blue-500 dark:text-blue-400 hover:underline text-center w-full sm:w-auto"
+        >
+          Continue Shopping
+        </Link>
+      </div>
     </div>
   )
 }

@@ -10,6 +10,7 @@
     "type-check": "tsc"
   },
   "dependencies": {
+    "@clerk/nextjs": "^5.7.5",
     "@heroicons/react": "^2.1.5",
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-select": "^2.1.2",
