@@ -1,36 +1,133 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Liquor Store Project Documentation
 
-## Getting Started
+## Table of Contents
 
-First, run the development server:
+1. [Introduction](#introduction)
+2. [Project Setup](#project-setup)
+3. [Project Structure](#project-structure)
+4. [Key Components](#key-components)
+5. [Authentication](#authentication)
+6. [API Routes](#api-routes)
+7. [Database](#database)
+8. [State Management](#state-management)
+9. [Styling](#styling)
+10. [Deployment](#deployment)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Introduction
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The Liquor Store project is a full-stack e-commerce application built with Next.js, React, and MongoDB. It features user authentication, product browsing, shopping cart functionality, order management, and an admin interface.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To set up the project locally, follow these steps:
 
-## Learn More
+1. Clone the repository:
+   ```
+   git clone https://github.com/your-username/liquor-store.git
+   cd liquor-store
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+2. Install dependencies:
+   ```
+   npm install
+   ```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+3. Set up environment variables:
+   Create a `.env.local` file in the root directory and add the following variables:
+   ```
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+   CLERK_SECRET_KEY=your_clerk_secret_key
+   MONGODB_URI=your_mongodb_connection_string
+   ```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+4. Run the development server:
+   ```
+   npm run dev
+   ```
 
-## Deploy on Vercel
+5. Open `http://localhost:3000` in your browser to view the application.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project Structure
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The project follows the Next.js 13 App Router structure:
+
+- `/app`: Contains the main application code
+  - `/api`: API routes
+  - `/products`: Product listing and detail pages
+  - `/cart`: Shopping cart page
+  - `/orders`: Order listing and tracking pages
+  - `/admin`: Admin interface pages
+- `/components`: Reusable React components
+- `/context`: React context providers
+- `/lib`: Utility functions and database connection
+- `/public`: Static assets
+- `/styles`: Global styles and Tailwind CSS configuration
+
+## Key Components
+
+### Navbar (`components/Navbar.tsx`)
+
+The Navbar component provides navigation and authentication controls. It includes links to the product listing, orders (for authenticated users), the shopping cart, and sign-in/sign-out functionality.
+
+### ProductCard (`components/ProductCard.tsx`)
+
+The ProductCard component displays individual product information, including name, price, and an "Add to Cart" button.
+
+### AddToCartButton (`components/AddToCartButton.tsx`)
+
+This component handles adding products to the cart, including quantity selection.
+
+### CartProvider (`context/CartContext.tsx`)
+
+The CartProvider manages the shopping cart state across the application, providing functions to add, remove, and update cart items.
+
+## Authentication
+
+Authentication is handled using Clerk. The project uses Clerk's components and hooks for sign-in, sign-up, and user management.
+
+Key files:
+- `app/layout.tsx`: Wraps the application with the ClerkProvider
+- `middleware.ts`: Defines protected routes and authentication rules
+
+## API Routes
+
+API routes are located in the `/app/api` directory:
+
+- `/api/products`: Handles product listing and individual product retrieval
+- `/api/orders`: Manages order creation and retrieval
+- `/api/admin/orders`: Provides admin-specific order management functionality
+
+## Database
+
+The project uses MongoDB as its database. The database connection is managed in `lib/mongodb.ts`.
+
+Key collections:
+- `products`: Stores product information
+- `orders`: Stores order information
+- `users`: Managed by Clerk, but referenced in orders
+
+## State Management
+
+- Global state (e.g., shopping cart) is managed using React Context (`context/CartContext.tsx`)
+- Local state is managed using React's `useState` hook in individual components
+
+## Styling
+
+The project uses Tailwind CSS for styling. Key files:
+- `tailwind.config.js`: Tailwind configuration
+- `app/globals.css`: Global styles and Tailwind directives
+
+## Deployment
+
+The project is designed to be deployed on Vercel. To deploy:
+
+1. Push your code to a GitHub repository
+2. Connect your GitHub repository to Vercel
+3. Configure environment variables in the Vercel dashboard
+4. Deploy the project
+
+Remember to set up your production MongoDB instance and update the `MONGODB_URI` environment variable accordingly.
+
+---
+
+This documentation provides an overview of the Liquor Store project. For more detailed information on specific components or functionality, refer to the inline comments in the respective files.
