@@ -127,7 +127,3 @@ The project is designed to be deployed on Vercel. To deploy:
 4. Deploy the project
 
 Remember to set up your production MongoDB instance and update the `MONGODB_URI` environment variable accordingly.
-
----
-
-This documentation provides an overview of the Liquor Store project. For more detailed information on specific components or functionality, refer to the inline comments in the respective files.
